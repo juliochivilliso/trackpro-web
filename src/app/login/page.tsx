@@ -35,7 +35,7 @@ export default function LoginPage() {
         <div className="w-20 h-20 flex items-center justify-center mb-4">
           <img src="/logo.png" alt="GPS Smart Logo" className="w-full h-full object-contain drop-shadow-xl" />
         </div>
-        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">GPS SMART</h1>
+        <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">TrackPro</h1>
         <p className="text-xs text-[var(--color-text-secondary)] mb-6">Plataforma de Gestión Vehicular</p>
 
         <form onSubmit={handleSubmit} className="w-full flex flex-col gap-4">
