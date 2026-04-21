@@ -32,8 +32,8 @@ export default function LoginPage() {
   return (
     <div className="bg-[var(--color-background-app)] h-screen w-screen flex items-center justify-center">
       <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl backdrop-blur-sm p-8 w-full max-w-sm shadow-2xl flex flex-col items-center">
-        <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center mb-4">
-          <Map className="w-6 h-6 text-white" />
+        <div className="w-20 h-20 flex items-center justify-center mb-4">
+          <img src="/logo.png" alt="GPS Smart Logo" className="w-full h-full object-contain drop-shadow-xl" />
         </div>
         <h1 className="text-xl font-semibold text-[var(--color-text-primary)]">GPS SMART</h1>
         <p className="text-xs text-[var(--color-text-secondary)] mb-6">Plataforma de Gestión Vehicular</p>
