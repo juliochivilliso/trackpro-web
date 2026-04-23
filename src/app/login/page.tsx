@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react";
+  import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Map, Eye, EyeOff, Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
@@ -13,11 +13,19 @@ export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(false);
 
+  // Redirigir directamente al dashboard al cargar la página (comentar si se quiere usar el botón)
+  useEffect(() => {
+    document.cookie = "gps_auth=authenticated; path=/; max-age=86400; SameSite=Lax";
+    router.push("/");
+  }, [router]);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
     setError(false);
 
+    // Login manual comentado para saltar validación
+    /*
     await new Promise((r) => setTimeout(r, 800));
 
     if (email === "admin@gpssmart.com" && password === "GPS2024") {
@@ -27,6 +35,10 @@ export default function LoginPage() {
       setError(true);
       setLoading(false);
     }
+    */
+
+    document.cookie = "gps_auth=authenticated; path=/; max-age=86400; SameSite=Lax";
+    router.push("/");
   };
 
   return (
