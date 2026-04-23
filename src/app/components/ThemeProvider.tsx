@@ -10,7 +10,7 @@ type ThemeContextValue = {
 };
 
 const ThemeContext = createContext<ThemeContextValue>({
-  resolvedTheme: "dark",
+  resolvedTheme: "light",
   setTheme: () => {},
 });
 
@@ -19,12 +19,12 @@ export function useTheme() {
 }
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const [theme, setThemeState] = useState<Theme>("dark");
+  const [theme, setThemeState] = useState<Theme>("light");
 
-  // On mount: read persisted preference (or default to dark)
+  // On mount: read persisted preference (or default to light)
   useEffect(() => {
     const stored = localStorage.getItem("theme") as Theme | null;
-    const initial = stored ?? "dark";
+    const initial = stored ?? "light";
     setThemeState(initial);
     document.documentElement.classList.toggle("dark", initial === "dark");
     document.documentElement.classList.toggle("light", initial === "light");
