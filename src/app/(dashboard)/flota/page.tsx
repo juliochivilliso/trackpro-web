@@ -18,19 +18,22 @@ import {
   Radio,
   Cpu,
   UserCircle,
+  Plus,
 } from "lucide-react";
 import Link from "next/link";
+import RegisterVehicleModal from "../../../components/modals/RegisterVehicleModal";
 
 type SortKey = "name" | "speed" | "battery" | "status";
 type StatusFilter = "all" | "online" | "offline";
 
 export default function FlotaPage() {
-  const { fleet } = useFleet();
+  const { fleet, addVehicle } = useFleet();
   const { getDriverByVehicle } = useDrivers();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [sortBy, setSortBy] = useState<SortKey>("name");
   const [sortAsc, setSortAsc] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   const vehicles = fleet.vehicles;
 
@@ -88,7 +91,21 @@ export default function FlotaPage() {
             Gestión y monitoreo de todos los vehículos registrados
           </p>
         </div>
+        <button 
+          onClick={() => setIsModalOpen(true)}
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20"
+        >
+          <Plus className="w-4 h-4" />
+          Registrar Unidad
+        </button>
       </div>
+
+      <RegisterVehicleModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onSuccess={() => setIsModalOpen(false)}
+        onRegister={addVehicle}
+      />
 
       {/* Stats Row */}
       <div className="grid grid-cols-4 gap-4">

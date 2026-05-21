@@ -70,19 +70,36 @@ const INITIAL_RULES: AlertRule[] = [
 
 let ruleCounter = 9;
 
+const RULES_KEY = 'trackpro_alert_rules';
+
 export function useAlertRules() {
-  const [rules, setRules] = useState<AlertRule[]>(INITIAL_RULES);
+  const [rules, setRules] = useState<AlertRule[]>(() => {
+    if (typeof window === 'undefined') return INITIAL_RULES;
+    try {
+      const saved = localStorage.getItem(RULES_KEY);
+      return saved ? JSON.parse(saved) : INITIAL_RULES;
+    } catch { return INITIAL_RULES; }
+  });
+
+  const updateRules = (newRules: AlertRule[]) => {
+    setRules(newRules);
+    localStorage.setItem(RULES_KEY, JSON.stringify(newRules));
+  };
 
   const toggleRule = useCallback((id: string) => {
-    setRules(prev => prev.map(r =>
-      r.id === id ? { ...r, enabled: !r.enabled } : r
-    ));
+    setRules(prev => {
+      const newRules = prev.map(r => r.id === id ? { ...r, enabled: !r.enabled } : r);
+      localStorage.setItem(RULES_KEY, JSON.stringify(newRules));
+      return newRules;
+    });
   }, []);
 
   const updateRule = useCallback((id: string, updates: Partial<AlertRule>) => {
-    setRules(prev => prev.map(r =>
-      r.id === id ? { ...r, ...updates } : r
-    ));
+    setRules(prev => {
+      const newRules = prev.map(r => r.id === id ? { ...r, ...updates } : r);
+      localStorage.setItem(RULES_KEY, JSON.stringify(newRules));
+      return newRules;
+    });
   }, []);
 
   const addRule = useCallback((rule: Omit<AlertRule, 'id' | 'triggerCount' | 'lastTriggered' | 'createdAt'>) => {
@@ -93,11 +110,19 @@ export function useAlertRules() {
       lastTriggered: null,
       createdAt: new Date(),
     };
-    setRules(prev => [...prev, newRule]);
+    setRules(prev => {
+      const newRules = [...prev, newRule];
+      localStorage.setItem(RULES_KEY, JSON.stringify(newRules));
+      return newRules;
+    });
   }, []);
 
   const deleteRule = useCallback((id: string) => {
-    setRules(prev => prev.filter(r => r.id !== id));
+    setRules(prev => {
+      const newRules = prev.filter(r => r.id !== id);
+      localStorage.setItem(RULES_KEY, JSON.stringify(newRules));
+      return newRules;
+    });
   }, []);
 
   const getRulesByType = useCallback((type: string): AlertRule[] => {

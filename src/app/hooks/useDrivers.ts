@@ -8,6 +8,7 @@ export type Driver = {
   cedula: string;
   phone: string;
   licenseType: 'A' | 'B' | 'C';
+  licenseExpiration: string;
   status: 'available' | 'assigned' | 'off-duty';
   assignedVehicleId: string | null;
   totalTrips: number;
@@ -28,12 +29,12 @@ export type AssignmentRecord = {
 };
 
 const INITIAL_DRIVERS: Driver[] = [
-  { id: 'D-01', name: 'Carlos Méndez', cedula: '001-1234567-8', phone: '+1 (809) 555-0101', licenseType: 'B', status: 'assigned', assignedVehicleId: 'T-01', totalTrips: 342, score: 91, joinDate: '2021-06-10', avatar: 'CM' },
-  { id: 'D-02', name: 'María Santos', cedula: '001-9876543-2', phone: '+1 (829) 555-0202', licenseType: 'B', status: 'assigned', assignedVehicleId: 'T-02', totalTrips: 218, score: 87, joinDate: '2022-01-15', avatar: 'MS' },
-  { id: 'D-03', name: 'José Rodríguez', cedula: '001-5555555-5', phone: '+1 (849) 555-0303', licenseType: 'C', status: 'off-duty', assignedVehicleId: null, totalTrips: 520, score: 79, joinDate: '2020-03-22', avatar: 'JR' },
-  { id: 'D-04', name: 'Ana Guzmán', cedula: '001-7777777-7', phone: '+1 (809) 555-0404', licenseType: 'B', status: 'assigned', assignedVehicleId: 'T-04', totalTrips: 156, score: 95, joinDate: '2023-02-08', avatar: 'AG' },
-  { id: 'D-05', name: 'Pedro Fernández', cedula: '001-3333333-3', phone: '+1 (829) 555-0505', licenseType: 'B', status: 'available', assignedVehicleId: null, totalTrips: 89, score: 82, joinDate: '2023-09-01', avatar: 'PF' },
-  { id: 'D-06', name: 'Luisa Pérez', cedula: '001-4444444-4', phone: '+1 (849) 555-0606', licenseType: 'A', status: 'available', assignedVehicleId: null, totalTrips: 45, score: 88, joinDate: '2024-01-20', avatar: 'LP' },
+  { id: 'D-01', name: 'Carlos Méndez', cedula: '001-1234567-8', phone: '+1 (809) 555-0101', licenseType: 'B', licenseExpiration: '2026-12-15', status: 'assigned', assignedVehicleId: 'T-01', totalTrips: 342, score: 91, joinDate: '2021-06-10', avatar: 'CM' },
+  { id: 'D-02', name: 'María Santos', cedula: '001-9876543-2', phone: '+1 (829) 555-0202', licenseType: 'B', licenseExpiration: '2026-05-20', status: 'assigned', assignedVehicleId: 'T-02', totalTrips: 218, score: 87, joinDate: '2022-01-15', avatar: 'MS' },
+  { id: 'D-03', name: 'José Rodríguez', cedula: '001-5555555-5', phone: '+1 (849) 555-0303', licenseType: 'C', licenseExpiration: '2025-11-30', status: 'off-duty', assignedVehicleId: null, totalTrips: 520, score: 79, joinDate: '2020-03-22', avatar: 'JR' },
+  { id: 'D-04', name: 'Ana Guzmán', cedula: '001-7777777-7', phone: '+1 (809) 555-0404', licenseType: 'B', licenseExpiration: '2027-08-10', status: 'assigned', assignedVehicleId: 'T-04', totalTrips: 156, score: 95, joinDate: '2023-02-08', avatar: 'AG' },
+  { id: 'D-05', name: 'Pedro Fernández', cedula: '001-3333333-3', phone: '+1 (829) 555-0505', licenseType: 'B', licenseExpiration: '2026-04-01', status: 'available', assignedVehicleId: null, totalTrips: 89, score: 82, joinDate: '2023-09-01', avatar: 'PF' },
+  { id: 'D-06', name: 'Luisa Pérez', cedula: '001-4444444-4', phone: '+1 (849) 555-0606', licenseType: 'A', licenseExpiration: '2028-01-20', status: 'available', assignedVehicleId: null, totalTrips: 45, score: 88, joinDate: '2024-01-20', avatar: 'LP' },
 ];
 
 const INITIAL_HISTORY: AssignmentRecord[] = [

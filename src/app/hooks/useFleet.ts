@@ -34,10 +34,32 @@ export type Vehicle = {
   obd: VehicleOBD;
   vin: string;
   driverId: string | null;
+  source: 'simulated' | 'traccar';
+  traccarId?: number;
   devices: {
     gps: DeviceUnit;
     obd: DeviceUnit;
   };
+};
+
+type TraccarDevice = {
+  id: number;
+  name: string;
+  uniqueId: string;
+  status: string;
+  lastUpdate: string;
+  attributes?: Record<string, unknown>;
+};
+
+type TraccarPosition = {
+  id: number;
+  deviceId: number;
+  latitude: number;
+  longitude: number;
+  speed: number;
+  course: number;
+  fixTime: string;
+  attributes?: { batteryLevel?: number; io8?: string; [key: string]: unknown };
 };
 
 export type FleetState = {
@@ -49,7 +71,7 @@ export type FleetState = {
 const INITIAL_VEHICLES: Omit<Vehicle, 'path'>[] = [
   {
     id: 'T-01', name: 'Honda Civic 2021', plate: 'A123456', lat: 18.486098, lng: -69.934878, speed: 0, battery: 95, heading: 45, status: 'online', hasAlert: false,
-    vin: '1HGBH41JXMN109186', driverId: 'D-01',
+    source: 'simulated' as const, vin: '1HGBH41JXMN109186', driverId: 'D-01',
     obd: { rpm: 2800, engineTemp: 92, fuelLevel: 72, odometer: 45230, dtcCodes: [] },
     devices: {
       gps: { model: 'Sinotrap ST-910', status: 'connected', signal: 5, battery: 92, lastPing: new Date(), firmware: 'v2.4.1' },
@@ -58,7 +80,7 @@ const INITIAL_VEHICLES: Omit<Vehicle, 'path'>[] = [
   },
   {
     id: 'T-02', name: 'Toyota Hilux', plate: 'L987654', lat: 18.472018, lng: -69.935264, speed: 0, battery: 82, heading: 120, status: 'online', hasAlert: false,
-    vin: 'MR0FR22G200470478', driverId: 'D-02',
+    source: 'simulated' as const, vin: 'MR0FR22G200470478', driverId: 'D-02',
     obd: { rpm: 800, engineTemp: 85, fuelLevel: 55, odometer: 78100, dtcCodes: ['P0171'] },
     devices: {
       gps: { model: 'Sinotrap ST-910', status: 'connected', signal: 4, battery: 78, lastPing: new Date(), firmware: 'v2.4.1' },
@@ -67,7 +89,7 @@ const INITIAL_VEHICLES: Omit<Vehicle, 'path'>[] = [
   },
   {
     id: 'T-03', name: 'Nissan Frontier', plate: 'L112233', lat: 18.4820, lng: -69.9400, speed: 0, battery: 20, heading: 270, status: 'offline', hasAlert: true,
-    vin: '3N6PD23Y9ZK000471', driverId: null,
+    source: 'simulated' as const, vin: '3N6PD23Y9ZK000471', driverId: null,
     obd: { rpm: 0, engineTemp: 35, fuelLevel: 12, odometer: 112400, dtcCodes: ['P0301', 'P0420'] },
     devices: {
       gps: { model: 'Sinotrap ST-910', status: 'disconnected', signal: 0, battery: 18, lastPing: new Date(), firmware: 'v2.3.0' },
@@ -76,7 +98,7 @@ const INITIAL_VEHICLES: Omit<Vehicle, 'path'>[] = [
   },
   {
     id: 'T-04', name: 'Hyundai Sonata', plate: 'A445566', lat: 18.485896, lng: -69.919387, speed: 0, battery: 68, heading: 180, status: 'online', hasAlert: false,
-    vin: '5NPE24AF8FH105887', driverId: 'D-04',
+    source: 'simulated' as const, vin: '5NPE24AF8FH105887', driverId: 'D-04',
     obd: { rpm: 2200, engineTemp: 88, fuelLevel: 40, odometer: 33500, dtcCodes: [] },
     devices: {
       gps: { model: 'Sinotrap ST-910', status: 'connected', signal: 5, battery: 65, lastPing: new Date(), firmware: 'v2.4.1' },
@@ -85,7 +107,7 @@ const INITIAL_VEHICLES: Omit<Vehicle, 'path'>[] = [
   },
   {
     id: 'T-05', name: 'Suzuki Grand Vitara', plate: 'G778899', lat: 18.49219, lng: -69.93521, speed: 0, battery: 88, heading: 310, status: 'online', hasAlert: false,
-    vin: 'JS3TD941614100253', driverId: null,
+    source: 'simulated' as const, vin: 'JS3TD941614100253', driverId: null,
     obd: { rpm: 1200, engineTemp: 78, fuelLevel: 90, odometer: 15200, dtcCodes: ['P0455'] },
     devices: {
       gps: { model: 'Sinotrap ST-910', status: 'connected', signal: 4, battery: 88, lastPing: new Date(), firmware: 'v2.4.1' },
@@ -613,6 +635,11 @@ const ROUTES: Record<string, { lat: number; lng: number }[]> = {
 // Step size per tick (~30m, simulates ~55 km/h at 2s interval)
 const STEP = 0.00027;
 
+type ApiVehicleResponse = {
+  id: number; plate: string; make?: string; model?: string; year?: number; vin?: string;
+  assignments?: { driver?: { id: number } | null; equipment?: { name: string } | null }[];
+};
+
 export function useFleet() {
   const [fleet, setFleet] = useState<FleetState>({
     vehicles: INITIAL_VEHICLES.map(v => ({ ...v, path: [{ lat: v.lat, lng: v.lng }] })),
@@ -668,7 +695,7 @@ export function useFleet() {
 
       setFleet(prev => {
         let updatedVehicles = prev.vehicles.map(v => {
-          if (v.status === 'offline') return v;
+          if (v.status === 'offline' || v.source === 'traccar') return v;
 
           // ── Waypoint-following movement ──
           const route = ROUTES[v.id];
@@ -773,7 +800,7 @@ export function useFleet() {
 
         if (!disconnectSimRef.current && currentTick % 22 === 0 && currentTick > 0) {
           // Pick a random online vehicle and disconnect a device
-          const onlineVehicles = updatedVehicles.filter(v => v.status === 'online');
+          const onlineVehicles = updatedVehicles.filter(v => v.status === 'online' && v.source === 'simulated');
           if (onlineVehicles.length > 0) {
             const randomVehicle = onlineVehicles[Math.floor(Math.random() * onlineVehicles.length)];
             const deviceToDisconnect: 'gps' | 'obd' = Math.random() > 0.5 ? 'gps' : 'obd';
@@ -816,6 +843,153 @@ export function useFleet() {
     return () => clearInterval(interval);
   }, []);
 
+  // ─── Traccar real-device polling ─── //
+  useEffect(() => {
+    let cancelled = false;
+
+    const fetchTraccar = async () => {
+      try {
+        const [devRes, posRes] = await Promise.all([
+          fetch('/api/traccar?resource=devices'),
+          fetch('/api/traccar?resource=positions'),
+        ]);
+        if (!devRes.ok || !posRes.ok || cancelled) return;
+
+        const [devices, positions]: [TraccarDevice[], TraccarPosition[]] = await Promise.all([
+          devRes.json(),
+          posRes.json(),
+        ]);
+        if (cancelled) return;
+
+        const posMap = new Map(positions.map(p => [p.deviceId, p]));
+
+        const realVehicles: Vehicle[] = devices
+          .filter(d => posMap.has(d.id))
+          .map(d => {
+            const pos = posMap.get(d.id)!;
+            const speedKmh = Math.round(pos.speed * 1.852);
+            const isOnline = d.status === 'online';
+            const battery = pos.attributes?.batteryLevel
+              ?? (pos.attributes?.io8 !== undefined ? parseInt(pos.attributes.io8, 10) : 0);
+            return {
+              id: `REAL-${d.id}`,
+              name: d.name,
+              plate: d.uniqueId,
+              lat: pos.latitude,
+              lng: pos.longitude,
+              speed: speedKmh,
+              battery,
+              heading: pos.course,
+              status: isOnline ? 'online' : 'offline',
+              hasAlert: false,
+              path: [{ lat: pos.latitude, lng: pos.longitude }],
+              source: 'traccar' as const,
+              traccarId: d.id,
+              vin: d.uniqueId,
+              driverId: null,
+              obd: { rpm: 0, engineTemp: 0, fuelLevel: 0, odometer: 0, dtcCodes: [] },
+              devices: {
+                gps: {
+                  model: 'Sinotrack',
+                  status: isOnline ? 'connected' : 'disconnected',
+                  signal: isOnline ? 5 : 0,
+                  battery,
+                  lastPing: new Date(d.lastUpdate),
+                  firmware: 'v1.0.0',
+                },
+                obd: {
+                  model: 'N/A',
+                  status: 'disconnected',
+                  signal: 0,
+                  battery: 0,
+                  lastPing: new Date(d.lastUpdate),
+                  firmware: 'N/A',
+                },
+              },
+            };
+          });
+
+        setFleet(prev => {
+          const simulated = prev.vehicles.filter(v => v.source === 'simulated');
+          const existingReal = new Map(prev.vehicles.filter(v => v.source === 'traccar').map(v => [v.id, v]));
+
+          const merged = realVehicles.map(rv => {
+            const existing = existingReal.get(rv.id);
+            if (existing) {
+              const newPath = [...existing.path, { lat: rv.lat, lng: rv.lng }].slice(-50);
+              return { ...rv, path: newPath };
+            }
+            return rv;
+          });
+
+          return { ...prev, vehicles: [...simulated, ...merged] };
+        });
+      } catch {
+        // Silently ignore — server may be temporarily unreachable
+      }
+    };
+
+    fetchTraccar();
+    const interval = setInterval(fetchTraccar, 5000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchApiVehicles = async () => {
+      try {
+        const res = await fetch('http://localhost:4000/vehicles');
+        if (!res.ok || cancelled) return;
+        const data: ApiVehicleResponse[] = await res.json();
+        const apiVehicles: Vehicle[] = data.map(v => ({
+          id: `API-${v.id}`,
+          name: [v.make, v.model, v.year].filter(Boolean).join(' ') || v.plate,
+          plate: v.plate, vin: v.vin || '', lat: 18.4861, lng: -69.9349,
+          speed: 0, battery: 0, heading: 0, status: 'offline' as const, hasAlert: false, path: [],
+          source: 'simulated' as const,
+          driverId: v.assignments?.[0]?.driver?.id?.toString() ?? null,
+          obd: { rpm: 0, engineTemp: 0, fuelLevel: 0, odometer: 0, dtcCodes: [] },
+          devices: {
+            gps: { model: v.assignments?.[0]?.equipment?.name ?? 'GPS', status: 'disconnected', signal: 0, battery: 0, lastPing: new Date(), firmware: 'N/A' },
+            obd: { model: 'N/A', status: 'disconnected', signal: 0, battery: 0, lastPing: new Date(), firmware: 'N/A' },
+          },
+        }));
+        if (!cancelled) setFleet(prev => ({
+          ...prev,
+          vehicles: [...prev.vehicles.filter(v => !v.id.startsWith('API-')), ...apiVehicles],
+        }));
+      } catch { /* API no disponible */ }
+    };
+    fetchApiVehicles();
+    const interval = setInterval(fetchApiVehicles, 10000);
+    return () => { cancelled = true; clearInterval(interval); };
+  }, []);
+
+  const addVehicle = useCallback((data: {
+    id: number; plate: string; make?: string; model?: string;
+    year?: number; equipmentName?: string; driverId?: number;
+  }) => {
+    const newVehicle: Vehicle = {
+      id: `API-${data.id}`,
+      name: [data.make, data.model, data.year].filter(Boolean).join(' ') || data.plate,
+      plate: data.plate, vin: '', lat: 18.4861, lng: -69.9349,
+      speed: 0, battery: 0, heading: 0, status: 'offline', hasAlert: false, path: [],
+      source: 'simulated', driverId: data.driverId?.toString() ?? null,
+      obd: { rpm: 0, engineTemp: 0, fuelLevel: 0, odometer: 0, dtcCodes: [] },
+      devices: {
+        gps: { model: data.equipmentName ?? 'GPS', status: 'disconnected', signal: 0, battery: 0, lastPing: new Date(), firmware: 'N/A' },
+        obd: { model: 'N/A', status: 'disconnected', signal: 0, battery: 0, lastPing: new Date(), firmware: 'N/A' },
+      },
+    };
+    setFleet(prev => ({
+      ...prev,
+      vehicles: [...prev.vehicles.filter(v => v.id !== newVehicle.id), newVehicle],
+    }));
+  }, []);
+
   const getSelectedVehicle = useCallback(() => {
     return fleet.vehicles.find(v => v.id === fleet.selectedVehicleId) || null;
   }, [fleet.vehicles, fleet.selectedVehicleId]);
@@ -849,6 +1023,7 @@ export function useFleet() {
     centerFleet,
     setVehicleDriver,
     setCrossDeviceAlertCallback,
+    addVehicle,
   };
 }
 

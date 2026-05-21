@@ -44,6 +44,10 @@
 }
 
 @layer components {
+  .dropdown-enter {
+    animation: dropdown-in 0.15s ease-out forwards;
+  }
+
   /* Glassmorphism Panel styles */
   .glass-panel {
     background-color: var(--color-surface-glass);
@@ -182,6 +186,12 @@
   .search-input:focus {
     border-color: var(--color-accent-blue);
   }
+}
+
+/* ─── Dropdown Animation ─── */
+@keyframes dropdown-in {
+  from { opacity: 0; transform: scale(0.95) translateY(-4px); }
+  to   { opacity: 1; transform: scale(1)    translateY(0);     }
 }
 
 /* ─── Alert Pulse Animation ─── */

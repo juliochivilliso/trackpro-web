@@ -138,6 +138,7 @@ export default function IAPage() {
   const [chatResponse, setChatResponse] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   const typingRef = useRef<NodeJS.Timeout | null>(null);
+  const accRef = useRef('');
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const selectedVehicle = useMemo(() =>
@@ -174,11 +175,66 @@ export default function IAPage() {
     };
   }, []);
 
-  const handleSendQuery = () => {
+  const handleSendQuery = async () => {
     if (!chatInput.trim() || isTyping) return;
-    const response = getAIResponse(selectedId, selectedVehicle.name, chatInput);
-    startTyping(response);
+
+    const query = chatInput;
     setChatInput('');
+    setIsTyping(true);
+    setChatResponse('');
+
+    const obd = selectedVehicle.obd ?? {};
+    const rpm     = obd.rpm       != null ? obd.rpm                          : 'N/D';
+    const temp    = obd.engineTemp != null ? `${obd.engineTemp}°C`           : 'N/D';
+    const fuel    = obd.fuelLevel  != null ? `${Math.round(obd.fuelLevel)}%` : 'N/D';
+    const odo     = obd.odometer   != null ? `${Math.round(obd.odometer)} km`: 'N/D';
+    const dtcs    = Array.isArray(obd.dtcCodes) && obd.dtcCodes.length > 0
+                      ? obd.dtcCodes.join(', ')
+                      : 'Ninguno';
+
+    const vehicleContext = [
+      `Vehículo: ${selectedVehicle.name ?? 'N/D'} (ID: ${selectedVehicle.id ?? 'N/D'})`,
+      `Placa: ${selectedVehicle.plate ?? 'N/D'}`,
+      `VIN: ${selectedVehicle.vin ?? 'N/D'}`,
+      `Estado: ${selectedVehicle.status === 'online' ? 'En línea' : 'Fuera de línea'}`,
+      `RPM: ${rpm}`,
+      `Temperatura motor: ${temp}`,
+      `Combustible: ${fuel}`,
+      `Odómetro: ${odo}`,
+      `Códigos DTC activos: ${dtcs}`,
+      specs ? `Motor: ${specs.motor ?? 'N/D'}, Potencia: ${specs.potencia ?? 'N/D'}, Combustible: ${specs.combustible ?? 'N/D'}` : '',
+      specs ? `Aceite: ${specs.tipoAceite ?? 'N/D'} (${specs.capacidadAceite ?? 'N/D'}), Intervalo: ${specs.intervaloAceite ?? 'N/D'}` : '',
+    ].filter(Boolean).join('\n').replace(/\bundefined\b/g, 'N/D');
+
+    try {
+      const res = await fetch('/api/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query, vehicleContext }),
+      });
+
+      const data = await res.json();
+      const fullText = String(data.response ?? data.error ?? 'No se pudo obtener respuesta.');
+
+      if (typingRef.current) clearInterval(typingRef.current);
+      accRef.current = '';
+      setChatResponse('');
+
+      let idx = 0;
+      typingRef.current = setInterval(() => {
+        if (idx < fullText.length) {
+          accRef.current += fullText.charAt(idx);
+          setChatResponse(accRef.current);
+          idx++;
+        } else {
+          clearInterval(typingRef.current!);
+          setIsTyping(false);
+        }
+      }, 12);
+    } catch {
+      setChatResponse('Error de conexión con el asistente. Intentá de nuevo.');
+      setIsTyping(false);
+    }
   };
 
   // Reset chat when vehicle changes
@@ -436,14 +492,23 @@ export default function IAPage() {
           </h2>
 
           {/* Response area */}
-          {chatResponse && (
+          {(chatResponse || (isTyping && !chatResponse)) && (
             <div className="mb-3 p-3 rounded-xl bg-[var(--color-surface-hover)]/50 border border-purple-500/10">
               <div className="flex items-start gap-2">
                 <BrainCircuit className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
-                <p className="text-xs text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap">
-                  {chatResponse}
-                  {isTyping && <span className="inline-block w-1.5 h-3.5 bg-purple-400 animate-pulse ml-0.5 rounded-sm" />}
-                </p>
+                {isTyping && !chatResponse ? (
+                  <div className="flex items-center gap-1.5 py-0.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '150ms' }} />
+                    <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: '300ms' }} />
+                    <span className="text-xs text-purple-400 ml-1">Procesando...</span>
+                  </div>
+                ) : (
+                  <p className="text-xs text-[var(--color-text-primary)] leading-relaxed whitespace-pre-wrap">
+                    {chatResponse}
+                    {isTyping && <span className="inline-block w-1.5 h-3.5 bg-purple-400 animate-pulse ml-0.5 rounded-sm" />}
+                  </p>
+                )}
               </div>
             </div>
           )}

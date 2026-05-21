@@ -24,7 +24,7 @@ export default function ReportesPage() {
   const data = getReportData(period);
 
   return (
-    <div className="flex flex-col h-full w-full bg-[var(--color-background)] p-6 overflow-y-auto">
+    <div className="page-container custom-scrollbar">
       <div className="flex justify-between items-center mb-8">
         <div>
           <h1 className="text-2xl font-bold text-[var(--color-text-primary)] flex items-center gap-2">
@@ -102,14 +102,38 @@ function TabButton({ icon, label, isActive, onClick }: { icon: React.ReactNode, 
   );
 }
 
+type KpiCard = { label: string; value: string; delta: string }
+type ChartDay = { day: string; km: number; count?: number }
+type VehicleRank = { id: string; name: string; km: number; trips: number; fuel: number }
+type DriverStat = { name: string; driverId: string; trips: number; km: number; avgSpeed: number; fuelEff: string; score: number }
+type AlertCategory = { category: string; count: number; color: string }
+type AlertSeverity = { critical: number; warning: number; info: number }
+type DtcCode = { code: string; desc: string; count: number; vehicle: string }
+type VehicleMaintenance = { id: string; name: string; odometer: string; nextOilKm: string; status: string; dtcCount: number }
+type UpcomingService = { service: string; vehicle: string; dueInKm: number; urgency: string }
+
+type ReportData = {
+  kpiCards: KpiCard[];
+  weeklyKmChart: ChartDay[];
+  vehicleRanking: VehicleRank[];
+  driverStats: DriverStat[];
+  alertsByCategory: AlertCategory[];
+  alertsBySeverity: AlertSeverity;
+  topDtcCodes: DtcCode[];
+  dailyAlertTrend: ChartDay[];
+  vehicleMaintenanceStatus: VehicleMaintenance[];
+  maintenanceSummary: { alDia: number; proximos: number; vencidos: number };
+  upcomingServices: UpcomingService[];
+}
+
 // --- TAB 1: Resumen de Flota ---
-function ResumenTab({ data }: { data: any }) {
-  const maxKm = Math.max(...data.weeklyKmChart.map((d: any) => d.km));
+function ResumenTab({ data }: { data: ReportData }) {
+  const maxKm = Math.max(...data.weeklyKmChart.map((d) => d.km));
 
   return (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {data.kpiCards.map((kpi: any, idx: number) => (
+        {data.kpiCards.map((kpi, idx) => (
           <div key={idx} className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5 hover:bg-white/5 transition-colors">
             <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-1">{kpi.label}</h3>
             <p className="text-2xl font-semibold font-mono text-white mb-2">{kpi.value}</p>
@@ -123,7 +147,7 @@ function ResumenTab({ data }: { data: any }) {
         <div className="lg:col-span-2 bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5 flex flex-col h-[300px]">
           <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-6">Kilómetros Recorridos</h3>
           <div className="flex-1 flex items-end justify-between gap-2 px-2 mt-auto">
-            {data.weeklyKmChart.map((d: any, i: number) => {
+            {data.weeklyKmChart.map((d, i) => {
               const heightPct = (d.km / maxKm) * 100;
               return (
                 <div key={i} className="flex flex-col items-center flex-1 gap-2 group">
@@ -148,7 +172,7 @@ function ResumenTab({ data }: { data: any }) {
         <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5 flex flex-col h-[300px]">
           <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Ranking de Vehículos</h3>
           <div className="flex flex-col gap-3 overflow-y-auto pr-2">
-            {data.vehicleRanking.map((v: any, i: number) => (
+            {data.vehicleRanking.map((v, i) => (
               <div key={v.id} className="flex items-center gap-3 p-2 rounded-lg hover:bg-white/5">
                 <div className="w-6 h-6 rounded flex items-center justify-center bg-blue-500/10 text-blue-400 text-xs font-bold border border-blue-500/20">
                   {i + 1}
@@ -171,7 +195,7 @@ function ResumenTab({ data }: { data: any }) {
 }
 
 // --- TAB 2: Conductores ---
-function ConductoresTab({ data }: { data: any }) {
+function ConductoresTab({ data }: { data: ReportData }) {
   const [sortCol, setSortCol] = useState<string>("score");
   const [sortAsc, setSortAsc] = useState<boolean>(false);
 
@@ -183,9 +207,9 @@ function ConductoresTab({ data }: { data: any }) {
     }
   };
 
-  const sortedData = [...data.driverStats].sort((a: any, b: any) => {
-    const valA = a[sortCol];
-    const valB = b[sortCol];
+  const sortedData = [...data.driverStats].sort((a, b) => {
+    const valA = a[sortCol as keyof DriverStat];
+    const valB = b[sortCol as keyof DriverStat];
     if (valA < valB) return sortAsc ? -1 : 1;
     if (valA > valB) return sortAsc ? 1 : -1;
     return 0;
@@ -220,7 +244,7 @@ function ConductoresTab({ data }: { data: any }) {
             </tr>
           </thead>
           <tbody className="divide-y divide-[var(--color-border-glass)]">
-            {sortedData.map((d: any, idx: number) => (
+            {sortedData.map((d, idx) => (
               <tr key={idx} className="hover:bg-white/5 transition-colors">
                 <td className="px-6 py-4">
                   <p className="font-medium text-white">{d.name}</p>
@@ -251,8 +275,8 @@ function ConductoresTab({ data }: { data: any }) {
 }
 
 // --- TAB 3: Alertas & Diagnóstico ---
-function AlertasTab({ data }: { data: any }) {
-  const maxAlerts = Math.max(...data.dailyAlertTrend.map((d: any) => d.count));
+function AlertasTab({ data }: { data: ReportData }) {
+  const maxAlerts = Math.max(...data.dailyAlertTrend.map((d) => d.count || 0));
 
   const colors: Record<string, string> = {
     purple: "text-purple-400 bg-purple-500/10 border-purple-500/20",
@@ -271,7 +295,7 @@ function AlertasTab({ data }: { data: any }) {
         <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5 md:col-span-1">
           <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Alertas por Categoría</h3>
           <div className="flex flex-col gap-3">
-            {data.alertsByCategory.map((a: any, i: number) => (
+            {data.alertsByCategory.map((a, i) => (
               <div key={i} className="flex justify-between items-center">
                 <span className={`px-2.5 py-1 text-xs rounded-lg border ${colors[a.color] || colors.gray}`}>
                   {a.category}
@@ -318,8 +342,8 @@ function AlertasTab({ data }: { data: any }) {
         <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5 md:col-span-1 flex flex-col">
           <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Tendencia Diaria</h3>
           <div className="flex-1 flex items-end justify-between gap-1 mt-auto h-[150px]">
-            {data.dailyAlertTrend.map((d: any, i: number) => {
-              const heightPct = maxAlerts > 0 ? (d.count / maxAlerts) * 100 : 0;
+            {data.dailyAlertTrend.map((d, i) => {
+              const heightPct = maxAlerts > 0 ? ((d.count || 0) / maxAlerts) * 100 : 0;
               return (
                 <div key={i} className="flex flex-col items-center flex-1 gap-2">
                   <div className="w-full flex justify-center items-end relative h-[120px]">
@@ -340,7 +364,7 @@ function AlertasTab({ data }: { data: any }) {
       <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5">
         <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Códigos DTC Frecuentes (OBD2)</h3>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {data.topDtcCodes.map((dtc: any, i: number) => (
+          {data.topDtcCodes.map((dtc, i) => (
             <div key={i} className="bg-white/5 border border-white/10 p-4 rounded-xl flex flex-col gap-2">
                <div className="flex justify-between items-start">
                   <span className="font-mono text-red-400 font-bold bg-red-400/10 px-2 py-0.5 rounded border border-red-400/20">{dtc.code}</span>
@@ -357,7 +381,7 @@ function AlertasTab({ data }: { data: any }) {
 }
 
 // --- TAB 4: Mantenimiento ---
-function MantenimientoTab({ data }: { data: any }) {
+function MantenimientoTab({ data }: { data: ReportData }) {
   const getStatusBadge = (status: string) => {
     if (status === "VENCIDO") return "bg-red-500/10 text-red-400 border-red-500/20";
     if (status === "PRÓXIMO") return "bg-yellow-500/10 text-yellow-400 border-yellow-500/20";
@@ -395,7 +419,7 @@ function MantenimientoTab({ data }: { data: any }) {
           <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5">
              <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Estado por Vehículo</h3>
              <div className="space-y-3">
-               {data.vehicleMaintenanceStatus.map((v: any, i: number) => (
+               {data.vehicleMaintenanceStatus.map((v, i) => (
                  <div key={i} className="flex flex-col sm:flex-row sm:items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5 gap-3">
                    <div>
                      <p className="font-medium text-white text-sm">{v.name}</p>
@@ -419,7 +443,7 @@ function MantenimientoTab({ data }: { data: any }) {
           <div className="bg-[var(--color-surface-glass)] border border-[var(--color-border-glass)] rounded-2xl p-5">
              <h3 className="text-sm text-[var(--color-text-secondary)] font-medium mb-4">Próximos Servicios Programados</h3>
              <div className="space-y-3">
-               {data.upcomingServices.map((srv: any, i: number) => (
+               {data.upcomingServices.map((srv, i) => (
                  <div key={i} className="flex items-center justify-between p-3 rounded-xl border border-white/5 bg-white/5">
                    <div className="flex items-center gap-3">
                      <div className={`w-2 h-2 rounded-full ${srv.urgency === 'critical' ? 'bg-red-500' : srv.urgency === 'warning' ? 'bg-yellow-500' : 'bg-blue-500'}`}></div>

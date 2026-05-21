@@ -18,6 +18,8 @@ import {
   X,
   ChevronRight,
   CheckCircle2,
+  Calendar,
+  AlertTriangle,
 } from "lucide-react";
 
 type DriverTab = 'all' | 'available' | 'assigned' | 'off-duty';
@@ -151,6 +153,19 @@ export default function AsignacionPage() {
                           </span>
                           <span className="px-1.5 py-0.5 rounded bg-[var(--color-surface-hover)] font-mono font-bold">
                             Lic. {driver.licenseType}
+                          </span>
+                          
+                          {/* Expiration Date */}
+                          <span className={`flex items-center gap-1 font-mono px-1.5 py-0.5 rounded ${
+                            new Date(driver.licenseExpiration) < new Date() 
+                              ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                              : new Date(driver.licenseExpiration) < new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                              ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30'
+                              : 'bg-[var(--color-surface-hover)]'
+                          }`}>
+                            <Calendar className="w-3 h-3" />
+                            Exp: {driver.licenseExpiration}
+                            {new Date(driver.licenseExpiration) < new Date() && <AlertTriangle className="w-2.5 h-2.5" />}
                           </span>
                         </div>
 
